@@ -11,3 +11,4 @@ env/
 .ipynb_checkpoints/
 # End Generation Here
 
+vector_index/

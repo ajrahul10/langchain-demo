@@ -1,25 +1,29 @@
 import os
 import sys
-import constant
 
-from langchain_community.document_loaders import TextLoader
-from langchain.indexes import VectorstoreIndexCreator
-from langchain_openai import OpenAI, OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain.chains import RetrievalQA
+from dotenv import load_dotenv
 
 # Set your OpenAI API key
-os.environ["OPENAI_API_KEY"] = constant.OPENAI_API_KEY
+load_dotenv()
 
-# Load the text file
-loader = TextLoader("data.txt")
+# Access the API key
+openai_api_key = os.getenv("OPENAI_API_KEY")
+os.environ["OPENAI_API_KEY"] = openai_api_key
 
-# Create an index (embeddings + vector search)
-index = VectorstoreIndexCreator(
-    vectorstore_cls=FAISS,
-    embedding=OpenAIEmbeddings()
-).from_loaders([loader])
+# Load vector index
+embeddings = OpenAIEmbeddings()
+vectorstore = FAISS.load_local("vector_index", embeddings, allow_dangerous_deserialization=True)
+
+
+# Set up LLM and QA chain
+llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0)
+qa_chain = RetrievalQA.from_chain_type(llm=llm, retriever=vectorstore.as_retriever(), chain_type="stuff")
 
 query = sys.argv[1]
 
-answer = index.query(query, llm=OpenAI())
-print(answer)
+# Ask and answer
+response = qa_chain.invoke(query)
+print(response["result"])
